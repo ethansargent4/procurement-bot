@@ -17,6 +17,8 @@ export const config = {
   pscCodes: (process.env.PSC_CODES || '').split(',').map(s => s.trim()).filter(Boolean),
   keywords: (process.env.KEYWORDS || '').split(',').map(s => s.trim()).filter(Boolean),
   setAsides: (process.env.SET_ASIDES || '').split(',').map(s => s.trim()).filter(Boolean),
+  excludeKeywords: (process.env.EXCLUDE_KEYWORDS || '').split(',').map(s => s.trim()).filter(Boolean),
+  maxEstValue: parseFloat(process.env.MAX_EST_VALUE || '15000'),
   lookbackDays: parseInt(process.env.LOOKBACK_DAYS || '2', 10),
   minScore: parseFloat(process.env.MIN_SCORE || '0.3'),
   cronSchedule: process.env.CRON_SCHEDULE || '0 */4 * * *',
