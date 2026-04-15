@@ -31,10 +31,36 @@ function parseJson(text) {
  * Used both to brief suppliers and to score.
  */
 export async function extractRequirements(opp) {
-  const system = 'You extract procurement requirements from US federal contracting notices. Return ONLY JSON with keys: item (short description), quantity (number or null), specs (array of strings), delivery_location (string or null), delivery_deadline (ISO date or null), key_terms (array of strings).';
-  const user = `Title: ${opp.title}\n\nDescription:\n${opp.description || '(none)'}`;
-  const text = await complete(system, user, 800);
-  return parseJson(text) || { item: opp.title, quantity: null, specs: [], delivery_location: null, delivery_deadline: null, key_terms: [] };
+  const system = `You extract procurement requirements from US federal (DLA/DoD) contracting notices that typically request parts by NSN (National Stock Number). Return ONLY JSON with these keys:
+- nsn: string or null (format "1234-56-789-0123", 13 digits with dashes — extract from title/description)
+- part_number: string or null (manufacturer P/N)
+- cage_code: string or null (5-char approved source)
+- item: short human description of the part
+- quantity: number or null
+- unit_of_issue: string or null (EA, BX, RO, etc.)
+- specs: array of spec strings
+- approved_sources: array of manufacturer names listed as acceptable
+- delivery_location: string or null
+- delivery_deadline: ISO date or null
+- fob: "origin" | "destination" | null
+- response_deadline: ISO date or null (when quote must be submitted to gov)
+- key_terms: array of critical phrases (e.g. "QPL", "first article", "trace required")
+Extract NSN carefully — it may appear as "NSN:", "NSN", "NIIN", or embedded in the description. Return nulls when absent.`;
+  const user = `Title: ${opp.title}\nPSC: ${opp.psc || ''}\nNAICS: ${opp.naics || ''}\n\nDescription:\n${opp.description || '(none)'}`;
+  const text = await complete(system, user, 1000);
+  const parsed = parseJson(text);
+  if (parsed) return parsed;
+
+  // Regex fallback so we still get NSN even without LLM
+  const nsnMatch = (opp.description || opp.title || '').match(/\b(\d{4}[- ]?\d{2}[- ]?\d{3}[- ]?\d{4})\b/);
+  return {
+    nsn: nsnMatch ? nsnMatch[1].replace(/\s/g, '-') : null,
+    part_number: null, cage_code: null,
+    item: opp.title, quantity: null, unit_of_issue: null,
+    specs: [], approved_sources: [],
+    delivery_location: null, delivery_deadline: null, fob: null,
+    response_deadline: null, key_terms: [],
+  };
 }
 
 /** Draft a supplier RFQ email body. */
